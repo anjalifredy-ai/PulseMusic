@@ -4,15 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,7 +52,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                 }
                 Text(
                     text = "Settings",
@@ -73,7 +71,6 @@ fun SettingsScreen(
                 .background(PulseBlack),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            // ========== INTERFACE ==========
             item { SectionHeader("Interface") }
 
             item {
@@ -105,7 +102,6 @@ fun SettingsScreen(
                 )
             }
 
-            // ========== CONTENT ==========
             item { SectionHeader("Content") }
 
             item {
@@ -123,7 +119,7 @@ fun SettingsScreen(
                 SettingsClickItem("Video download quality", "720p")
                 SettingsSwitchItem(
                     title = "Send back listening data to Google",
-                    subtitle = "Upload your listening history to YouTube Music server, it will make YT Music recommendation",
+                    subtitle = "Upload your listening history to YouTube Music server",
                     checked = sendListeningData,
                     onCheckedChange = { sendListeningData = it }
                 )
@@ -156,7 +152,6 @@ fun SettingsScreen(
                 SettingsClickItem("Proxy port", "8000")
             }
 
-            // ========== PLAYBACK ==========
             item { SectionHeader("Playback") }
 
             item {
@@ -199,7 +194,7 @@ fun SettingsScreen(
                 )
                 SettingsSwitchItem(
                     title = "Crossfade (BETA)",
-                    subtitle = "Smoothly transition between songs by fading out the current track while fading in the next one.",
+                    subtitle = "Smoothly transition between songs",
                     checked = crossfade,
                     onCheckedChange = { crossfade = it }
                 )
@@ -212,7 +207,6 @@ fun SettingsScreen(
                 )
             }
 
-            // ========== LYRICS / AI ==========
             item { SectionHeader("Lyrics & AI") }
 
             item {
@@ -220,7 +214,7 @@ fun SettingsScreen(
                 SettingsClickItem("YouTube Subtitle Translation Language", "en")
                 SettingsSwitchItem(
                     title = "Help PulseMusic lyrics build the lyrics database",
-                    subtitle = "Send your saved lyrics to PulseMusic lyrics's database",
+                    subtitle = "Send your saved lyrics to PulseMusic lyrics database",
                     checked = helpLyricsDb,
                     onCheckedChange = { helpLyricsDb = it }
                 )
@@ -237,7 +231,6 @@ fun SettingsScreen(
                 )
             }
 
-            // ========== STORAGE ==========
             item { SectionHeader("Storage") }
 
             item {
@@ -248,7 +241,6 @@ fun SettingsScreen(
                 SettingsClickItem("Limit Player Cache", "∞")
             }
 
-            // ========== SPONSORBLOCK ==========
             item { SectionHeader("SponsorBlock") }
 
             item {
@@ -264,7 +256,6 @@ fun SettingsScreen(
                 )
             }
 
-            // ========== ABOUT ==========
             item { SectionHeader("About") }
 
             item {
@@ -349,7 +340,7 @@ private fun SettingsClickItem(
             }
         }
         Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            Icons.Default.KeyboardArrowRight,
             contentDescription = null,
             tint = TextMuted
         )
