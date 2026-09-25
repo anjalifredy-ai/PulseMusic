@@ -4,21 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -31,16 +29,19 @@ import androidx.navigation.compose.rememberNavController
 import com.pulsemusic.app.data.DummyData
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.components.MiniPlayerBar
-import com.pulsemusic.app.ui.screens.HomeScreen
-import com.pulsemusic.app.ui.screens.LibraryScreen
-import com.pulsemusic.app.ui.screens.NowPlayingScreen
-import com.pulsemusic.app.ui.screens.SearchScreen
+import com.pulsemusic.app.ui.screens.*
 import com.pulsemusic.app.ui.theme.*
 
-sealed class Screen(val route: String, val label: String, val selectedIcon: ImageVector, val unselectedIcon: ImageVector) {
+sealed class Screen(
+    val route: String,
+    val label: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector
+) {
     data object Home : Screen("home", "Home", Icons.Filled.Home, Icons.Outlined.Home)
     data object Library : Screen("library", "Library", Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic)
     data object Search : Screen("search", "Search", Icons.Filled.Search, Icons.Outlined.Search)
+    data object Settings : Screen("settings", "Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
 class MainActivity : ComponentActivity() {
@@ -58,11 +59,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun PulseMusicApp() {
     val navController = rememberNavController()
-    var currentSong by remember { mutableStateOf<Song?>(DummyData.quickPicks[1]) }
+    var currentSong by remember { mutableStateOf<Song?>(DummyData.quickPicks.getOrNull(1)) }
     var isPlaying by remember { mutableStateOf(false) }
     var showNowPlaying by remember { mutableStateOf(false) }
 
-    val items = listOf(Screen.Home, Screen.Library, Screen.Search)
+    val items = listOf(Screen.Home, Screen.Library, Screen.Search, Screen.Settings)
 
     if (showNowPlaying && currentSong != null) {
         NowPlayingScreen(
@@ -141,6 +142,9 @@ fun PulseMusicApp() {
                 }
                 composable(Screen.Search.route) {
                     SearchScreen()
+                }
+                composable(Screen.Settings.route) {
+                    SettingsScreen()
                 }
             }
         }
