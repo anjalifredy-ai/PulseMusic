@@ -2,28 +2,43 @@
 
 **Premium glassy YouTube Music client for Android**
 
-Inspired by SimpMusic + modern glassmorphism UI (like RikkY Music screenshots).
+Inspired by SimpMusic + RikkY Music style UI.
 
-## Features (Roadmap)
-- ✨ Premium dark glass UI (Home, Library, Search, Now Playing)
-- 🎧 YouTube / YouTube Music streaming (coming soon)
-- 📝 Synced lyrics (coming soon)
-- 📱 Background playback
-- 📊 Library, Favorites, Recently Added
-- 🔄 GitHub Actions APK builds
+## Current Status (v1.0.0-alpha)
 
-## Tech Stack
-- Kotlin + Jetpack Compose
-- Material 3 + custom glass effects
-- Navigation Compose
-- Media3 / ExoPlayer (later)
+### ✅ Done
+- Dark premium glass UI (Home, Library, Search, Now Playing, Mini Player)
+- Full **Settings** screen matching SimpMusic style:
+  - Interface (Theme, Translucent nav, Blur effects, Liquid glass)
+  - Content (YouTube Account, Language, Country, Quality, Proxy, Explicit, etc.)
+  - Playback (Normalize, Crossfade, DJ Transition, Service options)
+  - Lyrics & AI (Translation, Contributor, Gemini API key, AI Lyric Translation)
+  - Storage (Player/Downloaded/Thumbnail/Canvas cache)
+  - SponsorBlock section
+- Bottom navigation (Home / Library / Search / Settings)
+- Mini player bar + full Now Playing screen
+- GitHub Actions APK build workflow
 
-## Build
-```bash
-./gradlew assembleDebug
-```
+### 🚧 Coming Next (Real features)
+- Real YouTube Music data (Innertube client)
+- Actual audio streaming with Media3 / ExoPlayer
+- Background playback + MediaSession
+- Synced lyrics
+- Cache system that actually works
+- SponsorBlock integration
+- Account login
 
-APK will also be built automatically via GitHub Actions on every push.
+> **Note:** Full real YouTube Music streaming (like SimpMusic) requires complex reverse-engineered Innertube API, PO tokens, visitor data handling, and a full media pipeline. This is a multi-week effort. Current app has solid UI + Settings foundation ready for it.
+
+## How to run
+1. Clone the repo
+2. Open in Android Studio (Ladybug or newer)
+3. Sync Gradle & Run on device/emulator
+
+Or download Debug APK from **Actions** tab after every push.
+
+## Repo
+https://github.com/anjalifredy-ai/PulseMusic
 
 ---
-Made with ❤️ for the community
+Made with ❤️
