@@ -1,8 +1,8 @@
 package com.pulsemusic.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -26,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -140,7 +138,8 @@ fun HomeScreen(
         itemsIndexed(filteredQuick) { index, song ->
             AnimatedVisibility(
                 visible = true,
-                enter = fadeIn(tween(300 + index * 40)) + slideInVertically { it / 4 }
+                enter = fadeIn(animationSpec = tween(300 + index * 40)) +
+                    slideInVertically(animationSpec = tween(300 + index * 40)) { it / 4 }
             ) {
                 SongListItem(song = song, onClick = { onSongClick(song) })
             }
@@ -215,5 +214,3 @@ fun HomeScreen(
         }
     }
 }
-
-private fun tween(duration: Int) = androidx.compose.animation.core.tween<Float>(duration)
