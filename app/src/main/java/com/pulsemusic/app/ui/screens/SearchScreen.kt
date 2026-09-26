@@ -51,7 +51,7 @@ fun SearchScreen(
                 loading = false
                 return@launch
             }
-            delay(400) // debounce
+            delay(400)
             loading = true
             error = null
             try {
@@ -143,7 +143,10 @@ fun SearchScreen(
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 Brush.linearGradient(
-                                    listOf(PulsePink.copy(0.35f), PulsePurple.copy(0.25f))
+                                    listOf(
+                                        PulsePink.copy(alpha = 0.35f),
+                                        PulsePurple.copy(alpha = 0.25f)
+                                    )
                                 )
                             )
                             .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
@@ -169,9 +172,7 @@ fun SearchScreen(
                 Text(error!!, color = TextMuted, modifier = Modifier.padding(20.dp))
             }
             else -> {
-                val filtered = if (selectedCategory == "All") results
-                else results.filter { it.category.equals(selectedCategory, true) || selectedCategory == "All" }
-
+                val filtered = results
                 LazyColumn(contentPadding = PaddingValues(bottom = 120.dp, top = 8.dp)) {
                     if (query.isNotBlank() && filtered.isEmpty()) {
                         item {
