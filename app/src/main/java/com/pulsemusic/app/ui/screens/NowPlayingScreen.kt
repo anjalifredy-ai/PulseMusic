@@ -14,7 +14,17 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,7 +82,7 @@ fun NowPlayingScreen(
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(
@@ -80,69 +90,81 @@ fun NowPlayingScreen(
                     listOf(Color(0xFF3A0A22), Color(0xFF1A0A12), PulseBlack)
                 )
             )
+            .padding(horizontal = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.KeyboardArrowDown, "Close", tint = TextPrimary, modifier = Modifier.size(32.dp))
-                }
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("NOW PLAYING", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp)
-                    Text(
-                        text = song.title,
-                        color = TextPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                IconButton(onClick = { showLyrics = !showLyrics }) {
-                    Icon(
-                        if (showLyrics) Icons.Default.Album else Icons.Default.Lyrics,
-                        contentDescription = "Lyrics",
-                        tint = if (showLyrics) PulsePink else TextPrimary
-                    )
-                }
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Close",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(32.dp)
+                )
             }
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("NOW PLAYING", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp)
+                Text(
+                    text = song.title,
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = { showLyrics = !showLyrics }) {
+                Icon(
+                    imageVector = if (showLyrics) Icons.Default.Album else Icons.AutoMirrored.Filled.QueueMusic,
+                    contentDescription = "Lyrics",
+                    tint = if (showLyrics) PulsePink else TextPrimary
+                )
+            }
+        }
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        // Middle content — use weight on AnimatedContent wrapper (ColumnScope)
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AnimatedContent(
                 targetState = showLyrics,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "player_lyrics"
+                label = "player_lyrics",
+                modifier = Modifier.fillMaxSize()
             ) { lyricsMode ->
                 if (lyricsMode) {
-                    if (lyricsLoading) {
-                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = PulsePink)
+                    when {
+                        lyricsLoading -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = PulsePink)
+                            }
                         }
-                    } else if (lyrics.isEmpty()) {
-                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Text("No lyrics found", color = TextMuted)
+                        lyrics.isEmpty() -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No lyrics found", color = TextMuted)
+                            }
                         }
-                    } else {
-                        LyricsPanel(
-                            lyrics = lyrics,
-                            activeIndex = activeLyricIndex,
-                            modifier = Modifier.weight(1f).fillMaxWidth()
-                        )
+                        else -> {
+                            LyricsPanel(
+                                lyrics = lyrics,
+                                activeIndex = activeLyricIndex,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 } else {
                     Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         CoverImage(
                             url = song.coverUrl,
@@ -177,61 +199,61 @@ fun NowPlayingScreen(
                     }
                 }
             }
+        }
 
-            Slider(
-                value = progress,
-                onValueChange = { progress = it },
-                colors = SliderDefaults.colors(
-                    thumbColor = PulsePink,
-                    activeTrackColor = PulsePink,
-                    inactiveTrackColor = Color(0xFF333333)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(formatTime((progress * 180).toInt()), color = TextMuted, fontSize = 12.sp)
-                Text(song.duration, color = TextMuted, fontSize = 12.sp)
+        Slider(
+            value = progress,
+            onValueChange = { progress = it },
+            colors = SliderDefaults.colors(
+                thumbColor = PulsePink,
+                activeTrackColor = PulsePink,
+                inactiveTrackColor = Color(0xFF333333)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(formatTime((progress * 180).toInt()), color = TextMuted, fontSize = 12.sp)
+            Text(song.duration, color = TextMuted, fontSize = 12.sp)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {}) {
+                Icon(Icons.Default.Shuffle, null, tint = TextSecondary)
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
+            IconButton(onClick = {}) {
+                Icon(Icons.Default.SkipPrevious, null, tint = TextPrimary, modifier = Modifier.size(36.dp))
+            }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                    .size(70.dp)
+                    .clip(CircleShape)
+                    .background(Brush.radialGradient(listOf(PulsePink, PulseMagenta)))
+                    .clickable(onClick = onPlayPause),
+                contentAlignment = Alignment.Center
             ) {
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.Shuffle, null, tint = TextSecondary)
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.SkipPrevious, null, tint = TextPrimary, modifier = Modifier.size(36.dp))
-                }
-                Box(
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(PulsePink, PulseMagenta)))
-                        .clickable(onClick = onPlayPause),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(38.dp)
-                    )
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.SkipNext, null, tint = TextPrimary, modifier = Modifier.size(36.dp))
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.Repeat, null, tint = TextSecondary)
-                }
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(38.dp)
+                )
+            }
+            IconButton(onClick = {}) {
+                Icon(Icons.Default.SkipNext, null, tint = TextPrimary, modifier = Modifier.size(36.dp))
+            }
+            IconButton(onClick = {}) {
+                Icon(Icons.Default.Repeat, null, tint = TextSecondary)
             }
         }
     }
