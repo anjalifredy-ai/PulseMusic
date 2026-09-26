@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
@@ -31,8 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pulsemusic.app.data.DummyData
 import com.pulsemusic.app.data.LyricLine
+import com.pulsemusic.app.data.MusicRepository
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.components.CoverImage
 import com.pulsemusic.app.ui.theme.*
@@ -45,20 +46,29 @@ fun NowPlayingScreen(
     onPlayPause: () -> Unit,
     onBack: () -> Unit
 ) {
-    var progress by remember { mutableFloatStateOf(0.12f) }
+    var progress by remember { mutableFloatStateOf(0.08f) }
     var showLyrics by remember { mutableStateOf(false) }
-    val lyrics = remember(song.id) { DummyData.demoLyrics(song.title) }
+    var lyrics by remember { mutableStateOf<List<LyricLine>>(emptyList()) }
+    var lyricsLoading by remember { mutableStateOf(false) }
     var activeLyricIndex by remember { mutableIntStateOf(0) }
+    val repo = remember { MusicRepository() }
 
-    // Fake progress + lyric highlight when "playing"
-    LaunchedEffect(isPlaying, song.id) {
-        if (!isPlaying) return@LaunchedEffect
+    LaunchedEffect(song.id) {
+        lyricsLoading = true
+        lyrics = repo.getLyrics(song)
+        lyricsLoading = false
+        progress = 0.08f
+        activeLyricIndex = 0
+    }
+
+    LaunchedEffect(isPlaying, song.id, lyrics) {
+        if (!isPlaying || lyrics.isEmpty()) return@LaunchedEffect
+        val maxTime = lyrics.lastOrNull()?.timeMs?.coerceAtLeast(30_000L) ?: 30_000L
         while (true) {
-            delay(500)
-            progress = (progress + 0.008f).coerceAtMost(1f)
-            val approxMs = (progress * 24000).toLong()
-            val idx = lyrics.indexOfLast { it.timeMs <= approxMs }.coerceAtLeast(0)
-            activeLyricIndex = idx
+            delay(400)
+            progress = (progress + 0.006f).coerceAtMost(1f)
+            val approxMs = (progress * maxTime).toLong()
+            activeLyricIndex = lyrics.indexOfLast { it.timeMs <= approxMs }.coerceAtLeast(0)
         }
     }
 
@@ -114,13 +124,21 @@ fun NowPlayingScreen(
                 label = "player_lyrics"
             ) { lyricsMode ->
                 if (lyricsMode) {
-                    LyricsPanel(
-                        lyrics = lyrics,
-                        activeIndex = activeLyricIndex,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    )
+                    if (lyricsLoading) {
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = PulsePink)
+                        }
+                    } else if (lyrics.isEmpty()) {
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("No lyrics found", color = TextMuted)
+                        }
+                    } else {
+                        LyricsPanel(
+                            lyrics = lyrics,
+                            activeIndex = activeLyricIndex,
+                            modifier = Modifier.weight(1f).fillMaxWidth()
+                        )
+                    }
                 } else {
                     Column(
                         modifier = Modifier.weight(1f),
@@ -160,7 +178,6 @@ fun NowPlayingScreen(
                 }
             }
 
-            // Progress + controls (always visible)
             Slider(
                 value = progress,
                 onValueChange = { progress = it },

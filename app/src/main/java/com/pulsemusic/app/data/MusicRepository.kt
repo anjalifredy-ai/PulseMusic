@@ -2,27 +2,20 @@ package com.pulsemusic.app.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 /**
  * Data layer.
  *
- * CURRENT: returns curated demo catalog (posters work offline-friendly via picsum).
- * NEXT: plug Innertube / InnerTune-style client here to fetch real YouTube Music
- * home, search, charts, and stream URLs.
+ * REAL lyrics: LRCLIB (https://lrclib.net)
+ * Catalog / streams: still demo until Innertube client is wired.
  *
- * Reference projects:
- * - maxrave-dev/SimpMusic
- * - z-huang/InnerTune
+ * To make catalog + playback 100% real like SimpMusic:
+ * 1. Add Innertube module (see maxrave-dev/SimpMusic or z-huang/InnerTune)
+ * 2. Implement search / browse / player endpoints
+ * 3. Resolve stream URL in resolveStreamUrl()
+ * 4. Feed URL to MusicService / PlayerController
  */
 class MusicRepository {
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .build()
 
     suspend fun getHomeQuickPicks(): List<Song> = withContext(Dispatchers.IO) {
         DummyData.quickPicks
@@ -43,29 +36,26 @@ class MusicRepository {
         }
     }
 
-    /**
-     * Placeholder for stream URL resolution.
-     * Real implementation uses Innertube player endpoint + signature decipher.
-     */
     suspend fun resolveStreamUrl(videoId: String): String? = withContext(Dispatchers.IO) {
-        // TODO: Innertube player request
+        // TODO: Innertube player endpoint + signature
         null
     }
 
-    /**
-     * Lyrics: try public sources later (lrclib.net, etc.)
-     */
+    /** Real lyrics from LRCLIB */
     suspend fun getLyrics(song: Song): List<LyricLine> = withContext(Dispatchers.IO) {
-        // Try LRCLIB-style public API later
-        DummyData.demoLyrics(song.title)
+        val durationSec = parseDurationSec(song.duration)
+        val real = LyricsApi.fetch(song.title, song.artist, durationSec)
+        if (real.isNotEmpty()) real
+        else DummyData.demoLyrics(song.title)
     }
 
-    fun ping(url: String): Boolean {
+    private fun parseDurationSec(duration: String): Int? {
         return try {
-            val req = Request.Builder().url(url).head().build()
-            client.newCall(req).execute().use { it.isSuccessful }
+            val parts = duration.split(":")
+            if (parts.size == 2) parts[0].toInt() * 60 + parts[1].toInt()
+            else null
         } catch (_: Exception) {
-            false
+            null
         }
     }
 }

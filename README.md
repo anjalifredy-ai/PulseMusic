@@ -2,36 +2,38 @@
 
 Premium glassy YouTube Music–style Android client.
 
-## Status
+## What is REAL right now
 
 | Feature | Status |
 |--------|--------|
-| Glass UI (Home / Library / Search / Settings / Now Playing) | ✅ |
-| Mood filters + Search | ✅ |
-| Animations + posters | ✅ |
-| **Media3 Player Service** (background-ready) | ✅ |
-| **Lyrics UI** (synced highlight demo) | ✅ |
-| MusicRepository architecture | ✅ |
-| Real YouTube Music catalog (Innertube) | 🚧 Next |
-| Real stream URLs + offline cache | 🚧 Next |
-| Real lyrics (LRCLIB / YT) | 🚧 Next |
+| Glass UI + animations | ✅ |
+| Search / moods / categories | ✅ |
+| Media3 background **player service** | ✅ |
+| **Real lyrics** via [LRCLIB](https://lrclib.net) API | ✅ |
+| Catalog posters (demo + placeholders) | ✅ |
+| YouTube Music **catalog + stream URLs** (Innertube) | ❌ Not yet |
 
-## Player service
+## Lyrics (real)
 
-`MusicService` uses **Media3 ExoPlayer + MediaSession** so once a stream URL is available (from Innertube / Piped / etc.), background playback and notification controls work.
+Now Playing → lyrics icon. App calls:
 
-## Lyrics
+```
+GET https://lrclib.net/api/get?track_name=...&artist_name=...
+```
 
-Now Playing → lyrics icon toggles fullscreen lyrics panel with active-line highlight.
+Synced LRC is parsed and highlighted while “playing”.
 
-## Real data next step
+## Why catalog/stream is not fully real yet
 
-Plug an Innertube client into `MusicRepository` (see SimpMusic / InnerTune).  
-`resolveStreamUrl(videoId)` and `search()` are the main hooks.
+YouTube Music has **no public streaming API**. Apps like SimpMusic / InnerTune / Metrolist reverse-engineer **Innertube** (private client API), handle tokens, signatures, and broken endpoints when Google changes them. That is months of work and ongoing maintenance — not something that can be finished in one chat.
+
+**Architecture is ready:**
+- `MusicRepository.resolveStreamUrl(videoId)`
+- `MusicService` + `PlayerController` already play any HTTPS stream URL
+
+Next real step = wire an Innertube client (or fork SimpMusic core) into the repository.
 
 ## Build
 
-GitHub Actions builds debug APK on every push.  
-Or open in Android Studio and Run.
-
-Repo: https://github.com/anjalifredy-ai/PulseMusic
+GitHub Actions builds APK on push.  
+https://github.com/anjalifredy-ai/PulseMusic
