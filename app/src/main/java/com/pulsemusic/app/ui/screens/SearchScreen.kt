@@ -1,8 +1,5 @@
 package com.pulsemusic.app.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,10 +21,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pulsemusic.app.data.DummyData
+import com.pulsemusic.app.data.MusicRepository
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.components.MoodChip
 import com.pulsemusic.app.ui.components.SongListItem
 import com.pulsemusic.app.ui.theme.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -35,24 +36,38 @@ fun SearchScreen(
 ) {
     var query by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
+    var results by remember { mutableStateOf<List<Song>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val repo = remember { MusicRepository() }
+    val scope = rememberCoroutineScope()
+    var searchJob by remember { mutableStateOf<Job?>(null) }
 
-    val results = remember(query, selectedCategory) {
-        DummyData.allSongs.filter { song ->
-            val matchesQuery = query.isBlank() ||
-                song.title.contains(query, ignoreCase = true) ||
-                song.artist.contains(query, ignoreCase = true)
-            val matchesCat = selectedCategory == "All" ||
-                song.category.equals(selectedCategory, ignoreCase = true)
-            matchesQuery && matchesCat
+    fun runSearch(q: String) {
+        searchJob?.cancel()
+        searchJob = scope.launch {
+            if (q.isBlank()) {
+                results = emptyList()
+                loading = false
+                return@launch
+            }
+            delay(400) // debounce
+            loading = true
+            error = null
+            try {
+                results = repo.search(q)
+            } catch (e: Exception) {
+                error = e.message ?: "Search failed"
+                results = emptyList()
+            }
+            loading = false
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFF0D0D12), PulseBlack))
-            )
+            .background(Brush.verticalGradient(listOf(Color(0xFF0D0D12), PulseBlack)))
             .padding(top = 12.dp)
     ) {
         Text(
@@ -62,16 +77,23 @@ fun SearchScreen(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
+        Text(
+            text = "YouTube Music (own Innertube)",
+            color = TextMuted,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
+        )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         TextField(
             value = query,
-            onValueChange = { query = it },
-            placeholder = { Text("Songs, artists, albums...", color = TextMuted) },
-            leadingIcon = {
-                Icon(Icons.Default.Search, null, tint = TextSecondary)
+            onValueChange = {
+                query = it
+                runSearch(it)
             },
+            placeholder = { Text("Songs, artists...", color = TextMuted) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = TextSecondary) },
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color(0xFF1E1E24),
@@ -89,30 +111,25 @@ fun SearchScreen(
                 .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
-                MoodChip("All", selectedCategory == "All") { selectedCategory = "All" }
-            }
+            item { MoodChip("All", selectedCategory == "All") { selectedCategory = "All" } }
             items(DummyData.moods.filter { it != "All" }) { mood ->
                 MoodChip(mood, selectedCategory == mood) { selectedCategory = mood }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (query.isBlank() && selectedCategory == "All") {
-            // Categories grid
+        if (query.isBlank()) {
             Text(
                 text = "Browse categories",
                 color = TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
             )
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -126,14 +143,14 @@ fun SearchScreen(
                             .clip(RoundedCornerShape(16.dp))
                             .background(
                                 Brush.linearGradient(
-                                    listOf(
-                                        PulsePink.copy(alpha = 0.35f),
-                                        PulsePurple.copy(alpha = 0.25f)
-                                    )
+                                    listOf(PulsePink.copy(0.35f), PulsePurple.copy(0.25f))
                                 )
                             )
                             .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
-                            .clickable { query = cat },
+                            .clickable {
+                                query = cat
+                                runSearch(cat)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(cat, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -142,23 +159,28 @@ fun SearchScreen(
             }
         }
 
-        LazyColumn(
-            contentPadding = PaddingValues(bottom = 120.dp, top = 8.dp)
-        ) {
-            if (results.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No results found", color = TextMuted, fontSize = 15.sp)
-                    }
+        when {
+            loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PulsePink)
                 }
-            } else {
-                items(results) { song ->
-                    SongListItem(song = song, onClick = { onSongClick(song) })
+            }
+            error != null -> {
+                Text(error!!, color = TextMuted, modifier = Modifier.padding(20.dp))
+            }
+            else -> {
+                val filtered = if (selectedCategory == "All") results
+                else results.filter { it.category.equals(selectedCategory, true) || selectedCategory == "All" }
+
+                LazyColumn(contentPadding = PaddingValues(bottom = 120.dp, top = 8.dp)) {
+                    if (query.isNotBlank() && filtered.isEmpty()) {
+                        item {
+                            Text("No results", color = TextMuted, modifier = Modifier.padding(20.dp))
+                        }
+                    }
+                    items(filtered) { song ->
+                        SongListItem(song = song, onClick = { onSongClick(song) })
+                    }
                 }
             }
         }
