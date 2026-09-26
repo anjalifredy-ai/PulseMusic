@@ -13,13 +13,6 @@ import java.util.concurrent.TimeUnit
 /**
  * Minimal Innertube client for YouTube Music (ANDROID_MUSIC context).
  * Own implementation for PulseMusic — not a fork of SimpMusic/InnerTune.
- *
- * Endpoints used:
- * - search
- * - browse (home-like)
- * - player (stream URL — signature still TODO)
- *
- * Google can change client versions / payloads; keep constants updatable.
  */
 class InnertubeClient {
 
@@ -32,13 +25,15 @@ class InnertubeClient {
     private val jsonMedia = "application/json".toMediaType()
 
     companion object {
-        // ANDROID_MUSIC client constants (public client values used by open clients)
         private const val BASE = "https://music.youtube.com/youtubei/v1"
         private const val API_KEY = "AIzaSyAOghZGza2MQSZkY_zfZ370N-PUdXEo8AI"
         private const val CLIENT_NAME = "ANDROID_MUSIC"
         private const val CLIENT_VERSION = "7.27.52"
         private const val USER_AGENT =
             "com.google.android.apps.youtube.music/7.27.52 (Linux; U; Android 14) gzip"
+
+        // Raw string so \s is valid for Regex engine, not Kotlin string escapes
+        private val VIDEO_ID_REGEX = Regex(""""videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"""")
     }
 
     private fun contextBody(additional: JSONObject.() -> Unit = {}): String {
@@ -79,15 +74,11 @@ class InnertubeClient {
         }
     }
 
-    /**
-     * Search YouTube Music.
-     */
     suspend fun search(query: String): List<InnertubeSong> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
 
         val body = contextBody {
             put("query", query)
-            // Songs filter roughly
             put("params", "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D")
         }
 
@@ -95,26 +86,16 @@ class InnertubeClient {
         parseSearchResults(json)
     }
 
-    /**
-     * Lightweight "home" via explore / charts style browse when possible.
-     * Falls back to a fixed search if browse shape changes.
-     */
     suspend fun getHomeSuggestions(): List<InnertubeSong> = withContext(Dispatchers.IO) {
-        // Try browse charts / mood
         val body = contextBody {
             put("browseId", "FEmusic_charts")
         }
         val json = post("browse", body)
         val fromBrowse = json?.let { parseBrowseSongs(it) }.orEmpty()
         if (fromBrowse.isNotEmpty()) return@withContext fromBrowse
-
-        // Fallback: popular search
         search("trending songs")
     }
 
-    /**
-     * Player endpoint — returns videoId metadata; adaptive formats need signature decipher (next step).
-     */
     suspend fun getPlayer(videoId: String): PlayerInfo? = withContext(Dispatchers.IO) {
         val body = contextBody {
             put("videoId", videoId)
@@ -124,8 +105,6 @@ class InnertubeClient {
         val json = post("player", body) ?: return@withContext null
         parsePlayer(json, videoId)
     }
-
-    // ---------- parsers ----------
 
     private fun parseSearchResults(json: JSONObject): List<InnertubeSong> {
         val out = mutableListOf<InnertubeSong>()
@@ -156,13 +135,6 @@ class InnertubeClient {
     private fun parseBrowseSongs(json: JSONObject): List<InnertubeSong> {
         val out = mutableListOf<InnertubeSong>()
         try {
-            val contents = json
-                .optJSONObject("contents")
-                ?.optJSONObject("singleColumnBrowseResultsRenderer")
-                ?.optJSONArray("tabs")
-                ?: json.optJSONObject("contents")?.optJSONArray("sectionListRenderer")
-
-            // Deep scrape videoIds + titles from whole tree
             scrapeAnyVideoIds(json).let { out.addAll(it) }
         } catch (_: Exception) { }
         return out.distinctBy { it.videoId }.take(25)
@@ -250,15 +222,15 @@ class InnertubeClient {
     }
 
     private fun findVideoId(obj: JSONObject): String? {
-        val raw = obj.toString()
-        val regex = Regex("\"videoId\"\s*:\s*\"([a-zA-Z0-9_-]{11})\"")
-        return regex.find(raw)?.groupValues?.getOrNull(1)
+        return VIDEO_ID_REGEX.find(obj.toString())?.groupValues?.getOrNull(1)
     }
 
     private fun scrapeAnyVideoIds(json: JSONObject): List<InnertubeSong> {
-        val raw = json.toString()
-        val regex = Regex("\"videoId\"\s*:\s*\"([a-zA-Z0-9_-]{11})\"")
-        val ids = regex.findAll(raw).map { it.groupValues[1] }.distinct().take(20).toList()
+        val ids = VIDEO_ID_REGEX.findAll(json.toString())
+            .map { it.groupValues[1] }
+            .distinct()
+            .take(20)
+            .toList()
         return ids.map { id ->
             InnertubeSong(
                 videoId = id,
@@ -275,7 +247,6 @@ class InnertubeClient {
         val author = videoDetails?.optString("author") ?: "Unknown"
         val length = videoDetails?.optString("lengthSeconds")?.toLongOrNull() ?: 0L
 
-        // Prefer progressive format URL if present and not ciphered
         var streamUrl: String? = null
         val streaming = json.optJSONObject("streamingData")
         val formats = streaming?.optJSONArray("formats")
@@ -289,7 +260,6 @@ class InnertubeClient {
                 }
             }
         }
-        // adaptive audio-only
         if (streamUrl == null) {
             val adaptive = streaming?.optJSONArray("adaptiveFormats")
             if (adaptive != null) {
