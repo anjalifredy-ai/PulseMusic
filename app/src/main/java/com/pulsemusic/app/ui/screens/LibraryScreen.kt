@@ -7,8 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Icon
@@ -35,8 +35,10 @@ fun LibraryScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(PulseBlack),
-        contentPadding = PaddingValues(bottom = 120.dp)
+            .background(
+                Brush.verticalGradient(listOf(Color(0xFF0D0D12), PulseBlack))
+            ),
+        contentPadding = PaddingValues(bottom = 130.dp)
     ) {
         item {
             Text(
@@ -48,7 +50,6 @@ fun LibraryScreen(
             )
         }
 
-        // Quick access cards
         item {
             Row(
                 modifier = Modifier
@@ -116,15 +117,15 @@ private fun LibraryQuickCard(
 ) {
     Box(
         modifier = modifier
-            .height(70.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(Brush.horizontalGradient(gradient))
             .clickable { }
             .padding(14.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+            Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.width(10.dp))
             Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
