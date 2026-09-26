@@ -1,39 +1,39 @@
 # PulseMusic 🎵
 
-Premium glassy YouTube Music–style Android client.
+**Own** premium YouTube Music–style Android client (not a SimpMusic fork).
 
-## What is REAL right now
+## Built for publishing under your brand
 
-| Feature | Status |
-|--------|--------|
-| Glass UI + animations | ✅ |
-| Search / moods / categories | ✅ |
-| Media3 background **player service** | ✅ |
-| **Real lyrics** via [LRCLIB](https://lrclib.net) API | ✅ |
-| Catalog posters (demo + placeholders) | ✅ |
-| YouTube Music **catalog + stream URLs** (Innertube) | ❌ Not yet |
+| Layer | Status |
+|-------|--------|
+| Glass UI | ✅ |
+| Media3 player service | ✅ |
+| Real lyrics (LRCLIB) | ✅ |
+| **Own Innertube client** (search / browse / player) | ✅ foundation |
+| Real posters from YT Music search | ✅ when API responds |
+| Stream play when URL not ciphered | ✅ partial |
+| Full signature decipher (all streams) | 🚧 next |
 
-## Lyrics (real)
-
-Now Playing → lyrics icon. App calls:
+## Architecture (yours)
 
 ```
-GET https://lrclib.net/api/get?track_name=...&artist_name=...
+app/
+  innertube/InnertubeClient.kt   ← own YT Music requests
+  data/MusicRepository.kt        ← catalog + lyrics + stream resolve
+  data/LyricsApi.kt              ← LRCLIB
+  player/MusicService.kt         ← Media3 background
+  player/PlayerController.kt
+  ui/                            ← glass screens
 ```
 
-Synced LRC is parsed and highlighted while “playing”.
+## Next for reliable audio
 
-## Why catalog/stream is not fully real yet
-
-YouTube Music has **no public streaming API**. Apps like SimpMusic / InnerTune / Metrolist reverse-engineer **Innertube** (private client API), handle tokens, signatures, and broken endpoints when Google changes them. That is months of work and ongoing maintenance — not something that can be finished in one chat.
-
-**Architecture is ready:**
-- `MusicRepository.resolveStreamUrl(videoId)`
-- `MusicService` + `PlayerController` already play any HTTPS stream URL
-
-Next real step = wire an Innertube client (or fork SimpMusic core) into the repository.
+Many player responses use `signatureCipher`. Need JS-based decipher (like NewPipe Extractor) to unlock all formats. That is the main remaining playback hard step.
 
 ## Build
 
-GitHub Actions builds APK on push.  
+GitHub Actions → debug APK on every push.  
 https://github.com/anjalifredy-ai/PulseMusic
+
+---
+PulseMusic — own engine, own UI, own release path.

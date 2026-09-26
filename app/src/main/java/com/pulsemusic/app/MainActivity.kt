@@ -33,11 +33,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pulsemusic.app.data.DummyData
+import com.pulsemusic.app.data.MusicRepository
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.player.PlayerController
 import com.pulsemusic.app.ui.components.MiniPlayerBar
 import com.pulsemusic.app.ui.screens.*
 import com.pulsemusic.app.ui.theme.*
+import kotlinx.coroutines.launch
 
 sealed class Screen(
     val route: String,
@@ -55,7 +57,7 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* notification permission result */ }
+    ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +83,8 @@ class MainActivity : ComponentActivity() {
 fun PulseMusicApp() {
     val context = LocalContext.current
     val playerController = remember { PlayerController(context.applicationContext) }
+    val repo = remember { MusicRepository() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         playerController.connect()
@@ -99,7 +103,11 @@ fun PulseMusicApp() {
     fun play(song: Song) {
         currentSong = song
         isPlaying = true
-        playerController.playSong(song)
+        scope.launch {
+            val videoId = song.videoId ?: song.id
+            val url = repo.resolveStreamUrl(videoId)
+            playerController.playSong(song.copy(streamUrl = url), url)
+        }
     }
 
     if (showNowPlaying && currentSong != null) {

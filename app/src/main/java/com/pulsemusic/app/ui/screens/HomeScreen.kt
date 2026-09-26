@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pulsemusic.app.data.DummyData
+import com.pulsemusic.app.data.MusicRepository
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.components.CoverImage
 import com.pulsemusic.app.ui.components.MoodChip
@@ -41,39 +43,41 @@ fun HomeScreen(
     onSongClick: (Song) -> Unit = {}
 ) {
     var selectedMood by remember { mutableStateOf("All") }
+    var quickPicks by remember { mutableStateOf<List<Song>>(DummyData.quickPicks) }
+    var covers by remember { mutableStateOf<List<Song>>(DummyData.coversAndRemixes) }
+    var loading by remember { mutableStateOf(true) }
+    val repo = remember { MusicRepository() }
 
-    val filteredQuick = remember(selectedMood) {
-        if (selectedMood == "All") DummyData.quickPicks
-        else DummyData.quickPicks.filter { it.category.equals(selectedMood, ignoreCase = true) }
+    LaunchedEffect(Unit) {
+        loading = true
+        try {
+            quickPicks = repo.getHomeQuickPicks()
+            covers = repo.getCoversAndRemixes()
+        } catch (_: Exception) {
+            // keep dummy fallback already set
+        }
+        loading = false
     }
-    val filteredCovers = remember(selectedMood) {
-        if (selectedMood == "All") DummyData.coversAndRemixes
-        else DummyData.coversAndRemixes.filter { it.category.equals(selectedMood, ignoreCase = true) }
+
+    val filteredQuick = remember(selectedMood, quickPicks) {
+        if (selectedMood == "All") quickPicks
+        else quickPicks.filter { it.category.equals(selectedMood, true) }
+    }
+    val filteredCovers = remember(selectedMood, covers) {
+        if (selectedMood == "All") covers
+        else covers.filter { it.category.equals(selectedMood, true) }
     }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF0D0D12), PulseBlack, PulseBlack)
-                )
-            ),
+            .background(Brush.verticalGradient(listOf(Color(0xFF0D0D12), PulseBlack, PulseBlack))),
         contentPadding = PaddingValues(bottom = 130.dp)
     ) {
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
-                Text(
-                    text = "PulseMusic",
-                    color = TextPrimary,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Good Evening",
-                    color = TextSecondary,
-                    fontSize = 14.sp
-                )
+                Text("PulseMusic", color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text("Own engine · YouTube Music data", color = TextSecondary, fontSize = 13.sp)
             }
         }
 
@@ -86,29 +90,21 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 DummyData.moods.forEach { mood ->
-                    MoodChip(
-                        text = mood,
-                        selected = selectedMood == mood,
-                        onClick = { selectedMood = mood }
-                    )
+                    MoodChip(mood, selectedMood == mood) { selectedMood = mood }
                 }
             }
         }
 
         item {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(listOf(PulsePink, PulsePurple))
-                        ),
+                        .background(Brush.linearGradient(listOf(PulsePink, PulsePurple))),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("SG", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -125,9 +121,17 @@ fun HomeScreen(
             }
         }
 
+        if (loading) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PulsePink)
+                }
+            }
+        }
+
         item {
             Text(
-                text = "Quick picks",
+                "Quick picks",
                 color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -138,26 +142,15 @@ fun HomeScreen(
         itemsIndexed(filteredQuick) { index, song ->
             AnimatedVisibility(
                 visible = true,
-                enter = fadeIn(animationSpec = tween(300 + index * 40)) +
-                    slideInVertically(animationSpec = tween(300 + index * 40)) { it / 4 }
+                enter = fadeIn(tween(280 + index * 30)) + slideInVertically(tween(280 + index * 30)) { it / 4 }
             ) {
                 SongListItem(song = song, onClick = { onSongClick(song) })
             }
         }
 
-        if (filteredQuick.isEmpty()) {
-            item {
-                Text(
-                    text = "No songs in this mood",
-                    color = TextMuted,
-                    modifier = Modifier.padding(20.dp)
-                )
-            }
-        }
-
         item {
             Text(
-                text = "Covers and remixes",
+                "Covers and remixes",
                 color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -178,7 +171,7 @@ fun HomeScreen(
 
         item {
             Text(
-                text = "Music videos for you",
+                "Music videos for you",
                 color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -191,7 +184,7 @@ fun HomeScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(DummyData.coversAndRemixes.take(4)) { song ->
+                items(filteredCovers.take(4)) { song ->
                     Column(modifier = Modifier.width(210.dp)) {
                         Box(
                             modifier = Modifier
@@ -199,11 +192,7 @@ fun HomeScreen(
                                 .height(118.dp)
                                 .clip(RoundedCornerShape(16.dp))
                         ) {
-                            CoverImage(
-                                url = song.coverUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            CoverImage(song.coverUrl, null, Modifier.fillMaxSize())
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(song.title, color = TextPrimary, fontSize = 13.sp, maxLines = 1, fontWeight = FontWeight.Medium)
