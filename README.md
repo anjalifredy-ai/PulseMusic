@@ -1,44 +1,37 @@
 # PulseMusic 🎵
 
-**Premium glassy YouTube Music client for Android**
+Premium glassy YouTube Music–style Android client.
 
-Inspired by SimpMusic + RikkY Music style UI.
+## Status
 
-## Current Status (v1.0.0-alpha)
+| Feature | Status |
+|--------|--------|
+| Glass UI (Home / Library / Search / Settings / Now Playing) | ✅ |
+| Mood filters + Search | ✅ |
+| Animations + posters | ✅ |
+| **Media3 Player Service** (background-ready) | ✅ |
+| **Lyrics UI** (synced highlight demo) | ✅ |
+| MusicRepository architecture | ✅ |
+| Real YouTube Music catalog (Innertube) | 🚧 Next |
+| Real stream URLs + offline cache | 🚧 Next |
+| Real lyrics (LRCLIB / YT) | 🚧 Next |
 
-### ✅ Done
-- Dark premium glass UI (Home, Library, Search, Now Playing, Mini Player)
-- Full **Settings** screen matching SimpMusic style:
-  - Interface (Theme, Translucent nav, Blur effects, Liquid glass)
-  - Content (YouTube Account, Language, Country, Quality, Proxy, Explicit, etc.)
-  - Playback (Normalize, Crossfade, DJ Transition, Service options)
-  - Lyrics & AI (Translation, Contributor, Gemini API key, AI Lyric Translation)
-  - Storage (Player/Downloaded/Thumbnail/Canvas cache)
-  - SponsorBlock section
-- Bottom navigation (Home / Library / Search / Settings)
-- Mini player bar + full Now Playing screen
-- GitHub Actions APK build workflow
+## Player service
 
-### 🚧 Coming Next (Real features)
-- Real YouTube Music data (Innertube client)
-- Actual audio streaming with Media3 / ExoPlayer
-- Background playback + MediaSession
-- Synced lyrics
-- Cache system that actually works
-- SponsorBlock integration
-- Account login
+`MusicService` uses **Media3 ExoPlayer + MediaSession** so once a stream URL is available (from Innertube / Piped / etc.), background playback and notification controls work.
 
-> **Note:** Full real YouTube Music streaming (like SimpMusic) requires complex reverse-engineered Innertube API, PO tokens, visitor data handling, and a full media pipeline. This is a multi-week effort. Current app has solid UI + Settings foundation ready for it.
+## Lyrics
 
-## How to run
-1. Clone the repo
-2. Open in Android Studio (Ladybug or newer)
-3. Sync Gradle & Run on device/emulator
+Now Playing → lyrics icon toggles fullscreen lyrics panel with active-line highlight.
 
-Or download Debug APK from **Actions** tab after every push.
+## Real data next step
 
-## Repo
-https://github.com/anjalifredy-ai/PulseMusic
+Plug an Innertube client into `MusicRepository` (see SimpMusic / InnerTune).  
+`resolveStreamUrl(videoId)` and `search()` are the main hooks.
 
----
-Made with ❤️
+## Build
+
+GitHub Actions builds debug APK on every push.  
+Or open in Android Studio and Run.
+
+Repo: https://github.com/anjalifredy-ai/PulseMusic

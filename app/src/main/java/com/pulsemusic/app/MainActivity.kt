@@ -1,9 +1,13 @@
 package com.pulsemusic.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -19,7 +23,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -28,6 +34,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pulsemusic.app.data.DummyData
 import com.pulsemusic.app.data.Song
+import com.pulsemusic.app.player.PlayerController
 import com.pulsemusic.app.ui.components.MiniPlayerBar
 import com.pulsemusic.app.ui.screens.*
 import com.pulsemusic.app.ui.theme.*
@@ -45,9 +52,23 @@ sealed class Screen(
 }
 
 class MainActivity : ComponentActivity() {
+
+    private val requestPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* notification permission result */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         setContent {
             PulseMusicTheme {
                 PulseMusicApp()
@@ -58,6 +79,16 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PulseMusicApp() {
+    val context = LocalContext.current
+    val playerController = remember { PlayerController(context.applicationContext) }
+
+    LaunchedEffect(Unit) {
+        playerController.connect()
+    }
+    DisposableEffect(Unit) {
+        onDispose { playerController.release() }
+    }
+
     val navController = rememberNavController()
     var currentSong by remember { mutableStateOf<Song?>(DummyData.quickPicks.getOrNull(1)) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -65,11 +96,20 @@ fun PulseMusicApp() {
 
     val items = listOf(Screen.Home, Screen.Library, Screen.Search, Screen.Settings)
 
+    fun play(song: Song) {
+        currentSong = song
+        isPlaying = true
+        playerController.playSong(song)
+    }
+
     if (showNowPlaying && currentSong != null) {
         NowPlayingScreen(
             song = currentSong!!,
             isPlaying = isPlaying,
-            onPlayPause = { isPlaying = !isPlaying },
+            onPlayPause = {
+                isPlaying = !isPlaying
+                playerController.togglePlayPause()
+            },
             onBack = { showNowPlaying = false }
         )
     } else {
@@ -80,7 +120,10 @@ fun PulseMusicApp() {
                     MiniPlayerBar(
                         song = currentSong,
                         isPlaying = isPlaying,
-                        onPlayPause = { isPlaying = !isPlaying },
+                        onPlayPause = {
+                            isPlaying = !isPlaying
+                            playerController.togglePlayPause()
+                        },
                         onClick = { showNowPlaying = true }
                     )
                     NavigationBar(
@@ -129,22 +172,13 @@ fun PulseMusicApp() {
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable(Screen.Home.route) {
-                    HomeScreen(onSongClick = {
-                        currentSong = it
-                        isPlaying = true
-                    })
+                    HomeScreen(onSongClick = { play(it) })
                 }
                 composable(Screen.Library.route) {
-                    LibraryScreen(onSongClick = {
-                        currentSong = it
-                        isPlaying = true
-                    })
+                    LibraryScreen(onSongClick = { play(it) })
                 }
                 composable(Screen.Search.route) {
-                    SearchScreen(onSongClick = {
-                        currentSong = it
-                        isPlaying = true
-                    })
+                    SearchScreen(onSongClick = { play(it) })
                 }
                 composable(Screen.Settings.route) {
                     SettingsScreen()

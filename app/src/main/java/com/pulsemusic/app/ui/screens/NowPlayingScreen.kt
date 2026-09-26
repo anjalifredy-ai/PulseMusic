@@ -1,9 +1,16 @@
 package com.pulsemusic.app.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,9 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pulsemusic.app.data.DummyData
+import com.pulsemusic.app.data.LyricLine
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.components.CoverImage
 import com.pulsemusic.app.ui.theme.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun NowPlayingScreen(
@@ -35,7 +45,22 @@ fun NowPlayingScreen(
     onPlayPause: () -> Unit,
     onBack: () -> Unit
 ) {
-    var progress by remember { mutableFloatStateOf(0.18f) }
+    var progress by remember { mutableFloatStateOf(0.12f) }
+    var showLyrics by remember { mutableStateOf(false) }
+    val lyrics = remember(song.id) { DummyData.demoLyrics(song.title) }
+    var activeLyricIndex by remember { mutableIntStateOf(0) }
+
+    // Fake progress + lyric highlight when "playing"
+    LaunchedEffect(isPlaying, song.id) {
+        if (!isPlaying) return@LaunchedEffect
+        while (true) {
+            delay(500)
+            progress = (progress + 0.008f).coerceAtMost(1f)
+            val approxMs = (progress * 24000).toLong()
+            val idx = lyrics.indexOfLast { it.timeMs <= approxMs }.coerceAtLeast(0)
+            activeLyricIndex = idx
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -49,13 +74,13 @@ fun NowPlayingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp),
+                    .padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
@@ -64,7 +89,7 @@ fun NowPlayingScreen(
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("NOW PLAYING", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp)
                     Text(
-                        text = "\"${song.title}\" Radio",
+                        text = song.title,
                         color = TextPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -72,53 +97,70 @@ fun NowPlayingScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.MoreVert, null, tint = TextPrimary)
+                IconButton(onClick = { showLyrics = !showLyrics }) {
+                    Icon(
+                        if (showLyrics) Icons.Default.Album else Icons.Default.Lyrics,
+                        contentDescription = "Lyrics",
+                        tint = if (showLyrics) PulsePink else TextPrimary
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            CoverImage(
-                url = song.coverUrl,
-                contentDescription = song.title,
-                modifier = Modifier
-                    .fillMaxWidth(0.88f)
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(22.dp))
-                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(22.dp))
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Text(
-                text = song.title,
-                color = TextPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(song.artist, color = TextSecondary, fontSize = 15.sp)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.Add, "Add", tint = TextSecondary)
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.FavoriteBorder, "Like", tint = TextSecondary)
+            AnimatedContent(
+                targetState = showLyrics,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "player_lyrics"
+            ) { lyricsMode ->
+                if (lyricsMode) {
+                    LyricsPanel(
+                        lyrics = lyrics,
+                        activeIndex = activeLyricIndex,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CoverImage(
+                            url = song.coverUrl,
+                            contentDescription = song.title,
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(22.dp))
+                                .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(22.dp))
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = song.title,
+                            color = TextPrimary,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(song.artist, color = TextSecondary, fontSize = 15.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Default.Add, null, tint = TextSecondary)
+                            }
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Default.FavoriteBorder, null, tint = TextSecondary)
+                            }
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
+            // Progress + controls (always visible)
             Slider(
                 value = progress,
                 onValueChange = { progress = it },
@@ -133,14 +175,16 @@ fun NowPlayingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("0:38", color = TextMuted, fontSize = 12.sp)
+                Text(formatTime((progress * 180).toInt()), color = TextMuted, fontSize = 12.sp)
                 Text(song.duration, color = TextMuted, fontSize = 12.sp)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -174,4 +218,44 @@ fun NowPlayingScreen(
             }
         }
     }
+}
+
+@Composable
+private fun LyricsPanel(
+    lyrics: List<LyricLine>,
+    activeIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(activeIndex) {
+        if (activeIndex in lyrics.indices) {
+            listState.animateScrollToItem(activeIndex)
+        }
+    }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        contentPadding = PaddingValues(vertical = 40.dp)
+    ) {
+        itemsIndexed(lyrics) { index, line ->
+            val active = index == activeIndex
+            Text(
+                text = line.text.ifBlank { "···" },
+                color = if (active) Color.White else TextMuted,
+                fontSize = if (active) 22.sp else 16.sp,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp, horizontal = 16.dp)
+            )
+        }
+    }
+}
+
+private fun formatTime(seconds: Int): String {
+    val m = seconds / 60
+    val s = seconds % 60
+    return "%d:%02d".format(m, s)
 }
