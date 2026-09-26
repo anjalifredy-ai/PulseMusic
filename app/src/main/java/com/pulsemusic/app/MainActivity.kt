@@ -32,7 +32,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.pulsemusic.app.data.DummyData
 import com.pulsemusic.app.data.MusicRepository
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.player.PlayerController
@@ -94,7 +93,7 @@ fun PulseMusicApp() {
     }
 
     val navController = rememberNavController()
-    var currentSong by remember { mutableStateOf<Song?>(DummyData.quickPicks.getOrNull(1)) }
+    var currentSong by remember { mutableStateOf<Song?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
     var showNowPlaying by remember { mutableStateOf(false) }
 
@@ -132,7 +131,7 @@ fun PulseMusicApp() {
                             isPlaying = !isPlaying
                             playerController.togglePlayPause()
                         },
-                        onClick = { showNowPlaying = true }
+                        onClick = { if (currentSong != null) showNowPlaying = true }
                     )
                     NavigationBar(
                         containerColor = Color(0xF00A0A0A),

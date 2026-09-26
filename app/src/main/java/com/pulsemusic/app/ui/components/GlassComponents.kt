@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -28,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.theme.*
@@ -68,9 +68,7 @@ fun CoverImage(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.linearGradient(
-                            listOf(Color(0xFF2A2A2A), Color(0xFF1A1A1A))
-                        )
+                        Brush.linearGradient(listOf(Color(0xFF2A2A2A), Color(0xFF1A1A1A)))
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -83,12 +81,12 @@ fun CoverImage(
                     .fillMaxSize()
                     .background(
                         Brush.linearGradient(
-                            listOf(PulsePink.copy(alpha = 0.4f), PulsePurple.copy(alpha = 0.3f))
+                            listOf(PulsePink.copy(alpha = 0.45f), PulsePurple.copy(alpha = 0.35f))
                         )
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.MusicNote, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.MusicNote, null, tint = Color.White.copy(alpha = 0.75f), modifier = Modifier.size(36.dp))
             }
         }
     )
@@ -162,6 +160,7 @@ fun SongCardHorizontal(
             modifier = Modifier
                 .size(148.dp)
                 .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(16.dp))
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
@@ -214,6 +213,7 @@ fun MoodChip(
     }
 }
 
+/** SimpMusic / RikkY style floating glass mini player */
 @Composable
 fun MiniPlayerBar(
     song: Song?,
@@ -227,16 +227,20 @@ fun MiniPlayerBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(Color(0xF21A1A1A), Color(0xF22A0A1A), Color(0xF21A1A1A))
+                    listOf(
+                        Color(0xE61A0A14),
+                        Color(0xE6281020),
+                        Color(0xE6120A18)
+                    )
                 )
             )
-            .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(18.dp))
+            .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
-            .padding(10.dp)
+            .padding(horizontal = 10.dp, vertical = 10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CoverImage(
@@ -264,13 +268,20 @@ fun MiniPlayerBar(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            Icon(
+                Icons.Default.FavoriteBorder,
+                null,
+                tint = TextSecondary,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickable { }
+            )
+            Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(listOf(PulsePink, PulseMagenta))
-                    )
+                    .background(Brush.radialGradient(listOf(PulsePink, PulseMagenta)))
                     .clickable(onClick = onPlayPause),
                 contentAlignment = Alignment.Center
             ) {
@@ -278,7 +289,7 @@ fun MiniPlayerBar(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

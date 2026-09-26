@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,35 +40,52 @@ import com.pulsemusic.app.ui.components.MoodChip
 import com.pulsemusic.app.ui.components.SongCardHorizontal
 import com.pulsemusic.app.ui.components.SongListItem
 import com.pulsemusic.app.ui.theme.*
+import java.util.Calendar
 
 @Composable
 fun HomeScreen(
     onSongClick: (Song) -> Unit = {}
 ) {
     var selectedMood by remember { mutableStateOf("All") }
-    var quickPicks by remember { mutableStateOf<List<Song>>(DummyData.quickPicks) }
-    var covers by remember { mutableStateOf<List<Song>>(DummyData.coversAndRemixes) }
+    var quickPicks by remember { mutableStateOf<List<Song>>(emptyList()) }
+    var covers by remember { mutableStateOf<List<Song>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var fromNetwork by remember { mutableStateOf(false) }
     val repo = remember { MusicRepository() }
+
+    val greeting = remember {
+        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        when {
+            h < 12 -> "Good Morning"
+            h < 17 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+    }
 
     LaunchedEffect(Unit) {
         loading = true
         try {
-            quickPicks = repo.getHomeQuickPicks()
-            covers = repo.getCoversAndRemixes()
+            val home = repo.getHomeQuickPicks()
+            val remix = repo.getCoversAndRemixes()
+            quickPicks = home
+            covers = remix
+            fromNetwork = home.any { it.videoId != null && it.title != "Unknown" }
         } catch (_: Exception) {
-            // keep dummy fallback already set
+            quickPicks = DummyData.quickPicks
+            covers = DummyData.coversAndRemixes
         }
+        if (quickPicks.isEmpty()) quickPicks = DummyData.quickPicks
+        if (covers.isEmpty()) covers = DummyData.coversAndRemixes
         loading = false
     }
 
     val filteredQuick = remember(selectedMood, quickPicks) {
         if (selectedMood == "All") quickPicks
-        else quickPicks.filter { it.category.equals(selectedMood, true) }
+        else quickPicks.filter { it.category.equals(selectedMood, true) }.ifEmpty { quickPicks }
     }
     val filteredCovers = remember(selectedMood, covers) {
         if (selectedMood == "All") covers
-        else covers.filter { it.category.equals(selectedMood, true) }
+        else covers.filter { it.category.equals(selectedMood, true) }.ifEmpty { covers }
     }
 
     LazyColumn(
@@ -76,8 +96,8 @@ fun HomeScreen(
     ) {
         item {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
-                Text("PulseMusic", color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                Text("Own engine · YouTube Music data", color = TextSecondary, fontSize = 13.sp)
+                Text("PulseMusic", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(greeting, color = TextSecondary, fontSize = 14.sp)
             }
         }
 
@@ -97,22 +117,35 @@ fun HomeScreen(
 
         item {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(PulsePink, PulsePurple))),
+                        .background(Brush.linearGradient(listOf(PulsePink, PulsePurple)))
+                        .border(1.dp, Color(0x44FFFFFF), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("SG", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(26.dp))
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text("Welcome back,", color = TextSecondary, fontSize = 13.sp)
-                    Text("SUPER GOKU YT", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "Guest",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Sign in with YouTube Music for your name",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = {}) {
@@ -123,80 +156,85 @@ fun HomeScreen(
 
         if (loading) {
             item {
-                Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PulsePink)
+                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PulsePink, strokeWidth = 3.dp)
                 }
             }
-        }
-
-        item {
-            Text(
-                "Quick picks",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-        }
-
-        itemsIndexed(filteredQuick) { index, song ->
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn(tween(280 + index * 30)) + slideInVertically(tween(280 + index * 30)) { it / 4 }
-            ) {
-                SongListItem(song = song, onClick = { onSongClick(song) })
+        } else {
+            item {
+                Text(
+                    text = if (fromNetwork) "Quick picks" else "Quick picks",
+                    color = TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                )
             }
-        }
 
-        item {
-            Text(
-                "Covers and remixes",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 12.dp)
-            )
-        }
-
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                items(filteredCovers) { song ->
-                    SongCardHorizontal(song = song, onClick = { onSongClick(song) })
+            itemsIndexed(filteredQuick) { index, song ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(tween(250 + index * 25)) + slideInVertically(tween(250 + index * 25)) { it / 5 }
+                ) {
+                    SongListItem(song = song, onClick = { onSongClick(song) })
                 }
             }
-        }
 
-        item {
-            Text(
-                "Music videos for you",
-                color = TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 20.dp, top = 28.dp, bottom = 12.dp)
-            )
-        }
+            item {
+                Text(
+                    "Covers and remixes",
+                    color = TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 12.dp)
+                )
+            }
 
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                items(filteredCovers.take(4)) { song ->
-                    Column(modifier = Modifier.width(210.dp)) {
-                        Box(
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(filteredCovers) { song ->
+                        SongCardHorizontal(song = song, onClick = { onSongClick(song) })
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    "For you",
+                    color = TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 20.dp, top = 28.dp, bottom = 12.dp)
+                )
+            }
+
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(filteredCovers.take(6)) { song ->
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(118.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .width(210.dp)
+                                .clickable { onSongClick(song) }
                         ) {
-                            CoverImage(song.coverUrl, null, Modifier.fillMaxSize())
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(118.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
+                            ) {
+                                CoverImage(song.coverUrl, null, Modifier.fillMaxSize())
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(song.title, color = TextPrimary, fontSize = 13.sp, maxLines = 1, fontWeight = FontWeight.Medium)
+                            Text(song.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1)
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(song.title, color = TextPrimary, fontSize = 13.sp, maxLines = 1, fontWeight = FontWeight.Medium)
-                        Text(song.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1)
                     }
                 }
             }
