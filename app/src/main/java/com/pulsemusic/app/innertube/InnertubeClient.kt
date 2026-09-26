@@ -10,10 +10,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/**
- * Minimal Innertube client for YouTube Music (ANDROID_MUSIC context).
- * Own implementation for PulseMusic — not a fork of SimpMusic/InnerTune.
- */
 class InnertubeClient {
 
     private val client = OkHttpClient.Builder()
@@ -31,9 +27,6 @@ class InnertubeClient {
         private const val CLIENT_VERSION = "7.27.52"
         private const val USER_AGENT =
             "com.google.android.apps.youtube.music/7.27.52 (Linux; U; Android 14) gzip"
-
-        // Raw string so \s is valid for Regex engine, not Kotlin string escapes
-        private val VIDEO_ID_REGEX = Regex(""""videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"""")
     }
 
     private fun contextBody(additional: JSONObject.() -> Unit = {}): String {
@@ -76,20 +69,16 @@ class InnertubeClient {
 
     suspend fun search(query: String): List<InnertubeSong> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
-
         val body = contextBody {
             put("query", query)
             put("params", "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D")
         }
-
         val json = post("search", body) ?: return@withContext emptyList()
         parseSearchResults(json)
     }
 
     suspend fun getHomeSuggestions(): List<InnertubeSong> = withContext(Dispatchers.IO) {
-        val body = contextBody {
-            put("browseId", "FEmusic_charts")
-        }
+        val body = contextBody { put("browseId", "FEmusic_charts") }
         val json = post("browse", body)
         val fromBrowse = json?.let { parseBrowseSongs(it) }.orEmpty()
         if (fromBrowse.isNotEmpty()) return@withContext fromBrowse
@@ -133,11 +122,7 @@ class InnertubeClient {
     }
 
     private fun parseBrowseSongs(json: JSONObject): List<InnertubeSong> {
-        val out = mutableListOf<InnertubeSong>()
-        try {
-            scrapeAnyVideoIds(json).let { out.addAll(it) }
-        } catch (_: Exception) { }
-        return out.distinctBy { it.videoId }.take(25)
+        return scrapeAnyVideoIds(json).distinctBy { it.videoId }.take(25)
     }
 
     private fun collectSongsFromSections(sections: JSONArray, out: MutableList<InnertubeSong>) {
@@ -166,7 +151,7 @@ class InnertubeClient {
                 ?.optJSONObject("watchEndpoint")
                 ?.optString("videoId")
                 ?.takeIf { it.isNotBlank() }
-            ?: findVideoId(item)
+            ?: findVideoId(item.toString())
 
         if (videoId.isNullOrBlank()) return null
 
@@ -187,12 +172,7 @@ class InnertubeClient {
         val thumb = extractThumbnail(responsive) ?: extractThumbnail(twoRow)
             ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
 
-        return InnertubeSong(
-            videoId = videoId,
-            title = title,
-            artist = artist,
-            thumbnailUrl = thumb
-        )
+        return InnertubeSong(videoId, title, artist, thumb)
     }
 
     private fun extractText(textObj: JSONObject?): String? {
@@ -221,16 +201,52 @@ class InnertubeClient {
         return thumbs.optJSONObject(thumbs.length() - 1)?.optString("url")
     }
 
-    private fun findVideoId(obj: JSONObject): String? {
-        return VIDEO_ID_REGEX.find(obj.toString())?.groupValues?.getOrNull(1)
+    /** Extract 11-char videoIds without Regex escape issues. */
+    private fun findVideoId(raw: String): String? {
+        var idx = 0
+        while (true) {
+            val key = raw.indexOf("\"videoId\"", idx)
+            if (key < 0) {
+                val key2 = raw.indexOf("\"videoId\":", idx)
+                if (key2 < 0) return null
+                idx = key2 + 10
+            } else {
+                idx = key + 10
+            }
+            val colon = raw.indexOf(':', idx)
+            if (colon < 0) return null
+            val q1 = raw.indexOf('"', colon + 1)
+            if (q1 < 0) return null
+            val q2 = raw.indexOf('"', q1 + 1)
+            if (q2 < 0) return null
+            val id = raw.substring(q1 + 1, q2)
+            if (id.length == 11 && id.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
+                return id
+            }
+            idx = q2 + 1
+        }
     }
 
     private fun scrapeAnyVideoIds(json: JSONObject): List<InnertubeSong> {
-        val ids = VIDEO_ID_REGEX.findAll(json.toString())
-            .map { it.groupValues[1] }
-            .distinct()
-            .take(20)
-            .toList()
+        val raw = json.toString()
+        val ids = linkedSetOf<String>()
+        var idx = 0
+        while (ids.size < 20) {
+            val key = raw.indexOf("\"videoId\"", idx)
+            if (key < 0) break
+            idx = key + 10
+            val colon = raw.indexOf(':', idx)
+            if (colon < 0) break
+            val q1 = raw.indexOf('"', colon + 1)
+            if (q1 < 0) break
+            val q2 = raw.indexOf('"', q1 + 1)
+            if (q2 < 0) break
+            val id = raw.substring(q1 + 1, q2)
+            if (id.length == 11 && id.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
+                ids.add(id)
+            }
+            idx = q2 + 1
+        }
         return ids.map { id ->
             InnertubeSong(
                 videoId = id,
