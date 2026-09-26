@@ -18,13 +18,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -123,7 +123,7 @@ fun NowPlayingScreen(
             }
             IconButton(onClick = { showLyrics = !showLyrics }) {
                 Icon(
-                    imageVector = if (showLyrics) Icons.Default.Album else Icons.AutoMirrored.Filled.QueueMusic,
+                    imageVector = if (showLyrics) Icons.Default.Album else Icons.Default.MusicNote,
                     contentDescription = "Lyrics",
                     tint = if (showLyrics) PulsePink else TextPrimary
                 )
@@ -132,7 +132,6 @@ fun NowPlayingScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Middle content — use weight on AnimatedContent wrapper (ColumnScope)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AnimatedContent(
                 targetState = showLyrics,
