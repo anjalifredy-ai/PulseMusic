@@ -1,18 +1,22 @@
 package com.pulsemusic.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -26,9 +30,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.pulsemusic.app.data.DummyData
 import com.pulsemusic.app.data.Song
+import com.pulsemusic.app.ui.components.CoverImage
 import com.pulsemusic.app.ui.components.MoodChip
 import com.pulsemusic.app.ui.components.SongCardHorizontal
 import com.pulsemusic.app.ui.components.SongListItem
@@ -40,19 +44,31 @@ fun HomeScreen(
 ) {
     var selectedMood by remember { mutableStateOf("All") }
 
+    val filteredQuick = remember(selectedMood) {
+        if (selectedMood == "All") DummyData.quickPicks
+        else DummyData.quickPicks.filter { it.category.equals(selectedMood, ignoreCase = true) }
+    }
+    val filteredCovers = remember(selectedMood) {
+        if (selectedMood == "All") DummyData.coversAndRemixes
+        else DummyData.coversAndRemixes.filter { it.category.equals(selectedMood, ignoreCase = true) }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(PulseBlack),
-        contentPadding = PaddingValues(bottom = 120.dp)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF0D0D12), PulseBlack, PulseBlack)
+                )
+            ),
+        contentPadding = PaddingValues(bottom = 130.dp)
     ) {
-        // Header
         item {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
                 Text(
                     text = "PulseMusic",
                     color = TextPrimary,
-                    fontSize = 22.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -63,14 +79,13 @@ fun HomeScreen(
             }
         }
 
-        // Mood chips
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 DummyData.moods.forEach { mood ->
                     MoodChip(
@@ -82,7 +97,6 @@ fun HomeScreen(
             }
         }
 
-        // Welcome back
         item {
             Row(
                 modifier = Modifier
@@ -92,12 +106,14 @@ fun HomeScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(PulsePink),
+                        .background(
+                            Brush.linearGradient(listOf(PulsePink, PulsePurple))
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("SG", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("SG", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -106,15 +122,11 @@ fun HomeScreen(
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = {}) {
-                    Icon(Icons.Default.Notifications, contentDescription = null, tint = TextSecondary)
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.Settings, contentDescription = null, tint = TextSecondary)
+                    Icon(Icons.Default.Notifications, null, tint = TextSecondary)
                 }
             }
         }
 
-        // Quick picks header
         item {
             Text(
                 text = "Quick picks",
@@ -125,12 +137,25 @@ fun HomeScreen(
             )
         }
 
-        // Quick picks list
-        items(DummyData.quickPicks) { song ->
-            SongListItem(song = song, onClick = { onSongClick(song) })
+        itemsIndexed(filteredQuick) { index, song ->
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(tween(300 + index * 40)) + slideInVertically { it / 4 }
+            ) {
+                SongListItem(song = song, onClick = { onSongClick(song) })
+            }
         }
 
-        // Covers and remixes
+        if (filteredQuick.isEmpty()) {
+            item {
+                Text(
+                    text = "No songs in this mood",
+                    color = TextMuted,
+                    modifier = Modifier.padding(20.dp)
+                )
+            }
+        }
+
         item {
             Text(
                 text = "Covers and remixes",
@@ -144,15 +169,14 @@ fun HomeScreen(
         item {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(DummyData.coversAndRemixes) { song ->
+                items(filteredCovers) { song ->
                     SongCardHorizontal(song = song, onClick = { onSongClick(song) })
                 }
             }
         }
 
-        // Music videos section placeholder
         item {
             Text(
                 text = "Music videos for you",
@@ -166,26 +190,24 @@ fun HomeScreen(
         item {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(DummyData.coversAndRemixes.take(3)) { song ->
-                    Column(modifier = Modifier.width(200.dp)) {
+                items(DummyData.coversAndRemixes.take(4)) { song ->
+                    Column(modifier = Modifier.width(210.dp)) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(PulseSurface)
+                                .height(118.dp)
+                                .clip(RoundedCornerShape(16.dp))
                         ) {
-                            AsyncImage(
-                                model = song.coverUrl,
+                            CoverImage(
+                                url = song.coverUrl,
                                 contentDescription = null,
-                                contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(song.title, color = TextPrimary, fontSize = 13.sp, maxLines = 1)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(song.title, color = TextPrimary, fontSize = 13.sp, maxLines = 1, fontWeight = FontWeight.Medium)
                         Text(song.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1)
                     }
                 }
@@ -193,3 +215,5 @@ fun HomeScreen(
         }
     }
 }
+
+private fun tween(duration: Int) = androidx.compose.animation.core.tween<Float>(duration)

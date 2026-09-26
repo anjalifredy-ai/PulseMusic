@@ -84,7 +84,7 @@ fun PulseMusicApp() {
                         onClick = { showNowPlaying = true }
                     )
                     NavigationBar(
-                        containerColor = Color(0xEE0A0A0A),
+                        containerColor = Color(0xF00A0A0A),
                         tonalElevation = 0.dp
                     ) {
                         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -141,7 +141,10 @@ fun PulseMusicApp() {
                     })
                 }
                 composable(Screen.Search.route) {
-                    SearchScreen()
+                    SearchScreen(onSongClick = {
+                        currentSong = it
+                        isPlaying = true
+                    })
                 }
                 composable(Screen.Settings.route) {
                     SettingsScreen()
