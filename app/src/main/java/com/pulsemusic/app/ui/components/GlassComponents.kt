@@ -25,32 +25,15 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.pulsemusic.app.data.Song
 import com.pulsemusic.app.ui.theme.*
-
-@Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0x33FFFFFF), Color(0x11FFFFFF))
-                )
-            )
-            .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(18.dp))
-            .padding(12.dp),
-        content = content
-    )
-}
 
 @Composable
 fun CoverImage(
@@ -58,8 +41,16 @@ fun CoverImage(
     contentDescription: String?,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val model = remember(url) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .crossfade(true)
+            .allowHardware(true)
+            .build()
+    }
     SubcomposeAsyncImage(
-        model = url,
+        model = model,
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         modifier = modifier,
@@ -67,12 +58,10 @@ fun CoverImage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(listOf(Color(0xFF2A2A2A), Color(0xFF1A1A1A)))
-                    ),
+                    .background(Brush.linearGradient(listOf(Color(0xFF2A2A2A), Color(0xFF1A1A1A)))),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.MusicNote, null, tint = TextMuted, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.MusicNote, null, tint = TextMuted, modifier = Modifier.size(28.dp))
             }
         },
         error = {
@@ -81,12 +70,12 @@ fun CoverImage(
                     .fillMaxSize()
                     .background(
                         Brush.linearGradient(
-                            listOf(PulsePink.copy(alpha = 0.45f), PulsePurple.copy(alpha = 0.35f))
+                            listOf(PulsePink.copy(alpha = 0.5f), PulsePurple.copy(alpha = 0.4f))
                         )
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.MusicNote, null, tint = Color.White.copy(alpha = 0.75f), modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.MusicNote, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(32.dp))
             }
         }
     )
@@ -213,7 +202,6 @@ fun MoodChip(
     }
 }
 
-/** SimpMusic / RikkY style floating glass mini player */
 @Composable
 fun MiniPlayerBar(
     song: Song?,
@@ -231,11 +219,7 @@ fun MiniPlayerBar(
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(
-                        Color(0xE61A0A14),
-                        Color(0xE6281020),
-                        Color(0xE6120A18)
-                    )
+                    listOf(Color(0xE61A0A14), Color(0xE6281020), Color(0xE6120A18))
                 )
             )
             .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(24.dp))
@@ -272,9 +256,7 @@ fun MiniPlayerBar(
                 Icons.Default.FavoriteBorder,
                 null,
                 tint = TextSecondary,
-                modifier = Modifier
-                    .size(22.dp)
-                    .clickable { }
+                modifier = Modifier.size(22.dp).clickable { }
             )
             Spacer(modifier = Modifier.width(10.dp))
             Box(
