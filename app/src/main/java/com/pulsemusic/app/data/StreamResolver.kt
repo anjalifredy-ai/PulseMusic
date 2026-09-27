@@ -4,13 +4,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
-/**
- * Resolve playable audio URL for a YouTube videoId.
- * Uses public Piped instances (same idea many FOSS clients use).
- */
 object StreamResolver {
 
     private val client = OkHttpClient.Builder()
@@ -30,9 +28,8 @@ object StreamResolver {
         if (videoId.isBlank() || videoId.length != 11) return@withContext null
         for (host in PIPED_HOSTS) {
             try {
-                val url = "$host/streams/$videoId"
                 val req = Request.Builder()
-                    .url(url)
+                    .url("$host/streams/$videoId")
                     .header("User-Agent", "PulseMusic/1.0")
                     .header("Accept", "application/json")
                     .get()
@@ -41,10 +38,8 @@ object StreamResolver {
                     if (!resp.isSuccessful) return@use
                     val body = resp.body?.string() ?: return@use
                     val json = JSONObject(body)
-                    // Prefer audio streams
                     val audioStreams = json.optJSONArray("audioStreams")
                     if (audioStreams != null && audioStreams.length() > 0) {
-                        // Highest bitrate first often last or sort by bitrate
                         var bestUrl: String? = null
                         var bestBr = -1
                         for (i in 0 until audioStreams.length()) {
@@ -58,7 +53,6 @@ object StreamResolver {
                         }
                         if (!bestUrl.isNullOrBlank()) return@withContext bestUrl
                     }
-                    // Fallback video stream with audio
                     val videoStreams = json.optJSONArray("videoStreams")
                     if (videoStreams != null) {
                         for (i in 0 until videoStreams.length()) {
@@ -69,59 +63,76 @@ object StreamResolver {
                         }
                     }
                 }
-            } catch (_: Exception) {
-                // try next host
-            }
+            } catch (_: Exception) { }
         }
         null
     }
 
     suspend fun searchPiped(query: String): List<Song> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
+        val q = URLEncoder.encode(query, "UTF-8")
         for (host in PIPED_HOSTS) {
             try {
-                val url = "$host/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&filter=music_songs"
                 val req = Request.Builder()
-                    .url(url)
+                    .url("$host/search?q=$q&filter=music_songs")
                     .header("User-Agent", "PulseMusic/1.0")
                     .get()
                     .build()
                 client.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) return@use
                     val body = resp.body?.string() ?: return@use
-                    val arr = org.json.JSONArray(body)
+                    val arr = JSONArray(body)
                     val out = mutableListOf<Song>()
                     for (i in 0 until arr.length().coerceAtMost(30)) {
                         val o = arr.optJSONObject(i) ?: continue
-                        val type = o.optString("type")
-                        if (type.isNotBlank() && type != "stream" && type != "song") continue
-                        val id = o.optString("url")
-                            .substringAfter("/watch?v=")
-                            .substringAfter("watch?v=")
-                            .take(11)
-                            .ifBlank { o.optString("id").take(11) }
+                        val id = extractId(o)
                         if (id.length != 11) continue
-                        val title = o.optString("title").ifBlank { "Unknown" }
+                        val title = o.optString("title").ifBlank { "Track" }
                         val uploader = o.optString("uploader").ifBlank {
                             o.optString("uploaderName").ifBlank { "YouTube" }
                         }
-                        val thumb = o.optJSONArray("thumbnails")
-                            ?.optJSONObject(0)
-                            ?.optString("url")
-                            ?.ifBlank { null }
-                            ?: "https://i.ytimg.com/vi/$id/hqdefault.jpg"
+                        val thumb = extractThumb(o, id)
                         out.add(
                             Song(
                                 id = id,
                                 title = title,
                                 artist = uploader,
-                                coverUrl = thumb.replace("http://", "https://"),
+                                coverUrl = thumb,
                                 videoId = id,
-                                plays = o.optString("views").ifBlank { null }
+                                plays = o.optString("views").takeIf { it.isNotBlank() }
                             )
                         )
                     }
-                    if (out.isNotEmpty()) return@withContext out
+                    // Broader search if music_songs empty
+                    if (out.isEmpty()) {
+                        val req2 = Request.Builder()
+                            .url("$host/search?q=$q&filter=all")
+                            .header("User-Agent", "PulseMusic/1.0")
+                            .get()
+                            .build()
+                        client.newCall(req2).execute().use { resp2 ->
+                            if (!resp2.isSuccessful) return@use
+                            val body2 = resp2.body?.string() ?: return@use
+                            val arr2 = JSONArray(body2)
+                            for (i in 0 until arr2.length().coerceAtMost(30)) {
+                                val o = arr2.optJSONObject(i) ?: continue
+                                val type = o.optString("type")
+                                if (type == "channel" || type == "playlist") continue
+                                val id = extractId(o)
+                                if (id.length != 11) continue
+                                out.add(
+                                    Song(
+                                        id = id,
+                                        title = o.optString("title").ifBlank { "Track" },
+                                        artist = o.optString("uploader").ifBlank { "YouTube" },
+                                        coverUrl = extractThumb(o, id),
+                                        videoId = id
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    if (out.isNotEmpty()) return@withContext out.distinctBy { it.id }
                 }
             } catch (_: Exception) { }
         }
@@ -131,39 +142,58 @@ object StreamResolver {
     suspend fun trending(): List<Song> = withContext(Dispatchers.IO) {
         for (host in PIPED_HOSTS) {
             try {
-                // charts / trending music-ish
-                val url = "$host/trending?region=US"
-                val req = Request.Builder().url(url).header("User-Agent", "PulseMusic/1.0").get().build()
+                val req = Request.Builder()
+                    .url("$host/trending?region=US")
+                    .header("User-Agent", "PulseMusic/1.0")
+                    .get()
+                    .build()
                 client.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) return@use
                     val body = resp.body?.string() ?: return@use
-                    val arr = org.json.JSONArray(body)
+                    val arr = JSONArray(body)
                     val out = mutableListOf<Song>()
                     for (i in 0 until arr.length().coerceAtMost(25)) {
                         val o = arr.optJSONObject(i) ?: continue
-                        val id = o.optString("url").substringAfter("v=").take(11)
-                            .ifBlank { o.optString("id").take(11) }
+                        val id = extractId(o)
                         if (id.length != 11) continue
-                        val title = o.optString("title").ifBlank { continue }
-                        val uploader = o.optString("uploader").ifBlank { "YouTube" }
-                        val thumb = o.optJSONArray("thumbnails")?.optJSONObject(
-                            (o.optJSONArray("thumbnails")?.length() ?: 1) - 1
-                        )?.optString("url")
-                            ?: "https://i.ytimg.com/vi/$id/hqdefault.jpg"
+                        val title = o.optString("title")
+                        if (title.isBlank()) continue
                         out.add(
                             Song(
                                 id = id,
                                 title = title,
-                                artist = uploader,
-                                coverUrl = thumb.replace("http://", "https://"),
+                                artist = o.optString("uploader").ifBlank { "YouTube" },
+                                coverUrl = extractThumb(o, id),
                                 videoId = id
                             )
                         )
                     }
-                    if (out.isNotEmpty()) return@withContext out
+                    if (out.isNotEmpty()) return@withContext out.distinctBy { it.id }
                 }
             } catch (_: Exception) { }
         }
         emptyList()
+    }
+
+    private fun extractId(o: JSONObject): String {
+        val fromUrl = o.optString("url")
+            .substringAfter("v=")
+            .substringAfter("/watch?v=")
+            .take(11)
+        if (fromUrl.length == 11) return fromUrl
+        return o.optString("id").take(11)
+    }
+
+    private fun extractThumb(o: JSONObject, id: String): String {
+        val thumbs = o.optJSONArray("thumbnails")
+        if (thumbs != null && thumbs.length() > 0) {
+            val last = thumbs.optJSONObject(thumbs.length() - 1)?.optString("url")
+            if (!last.isNullOrBlank()) return last.replace("http://", "https://")
+            val first = thumbs.optJSONObject(0)?.optString("url")
+            if (!first.isNullOrBlank()) return first.replace("http://", "https://")
+        }
+        val t = o.optString("thumbnail")
+        if (t.isNotBlank()) return t.replace("http://", "https://")
+        return "https://i.ytimg.com/vi/$id/hqdefault.jpg"
     }
 }
