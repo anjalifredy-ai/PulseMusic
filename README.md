@@ -1,39 +1,19 @@
-# PulseMusic 🎵
+# PulseMusic v1.1
 
-**Own** premium YouTube Music–style Android client (not a SimpMusic fork).
+Own premium YouTube Music-style Android client.
 
-## Built for publishing under your brand
+## This update
 
-| Layer | Status |
-|-------|--------|
-| Glass UI | ✅ |
-| Media3 player service | ✅ |
-| Real lyrics (LRCLIB) | ✅ |
-| **Own Innertube client** (search / browse / player) | ✅ foundation |
-| Real posters from YT Music search | ✅ when API responds |
-| Stream play when URL not ciphered | ✅ partial |
-| Full signature decipher (all streams) | 🚧 next |
-
-## Architecture (yours)
-
-```
-app/
-  innertube/InnertubeClient.kt   ← own YT Music requests
-  data/MusicRepository.kt        ← catalog + lyrics + stream resolve
-  data/LyricsApi.kt              ← LRCLIB
-  player/MusicService.kt         ← Media3 background
-  player/PlayerController.kt
-  ui/                            ← glass screens
-```
-
-## Next for reliable audio
-
-Many player responses use `signatureCipher`. Need JS-based decipher (like NewPipe Extractor) to unlock all formats. That is the main remaining playback hard step.
+- **Banners / covers**: real YouTube / Piped thumbnails via Coil
+- **Search**: Piped music search + Innertube fallback
+- **Home**: Piped trending for real posters
+- **Playback**: audio via Piped stream API (no signature decipher needed for many tracks)
+- **Player theme**: dominant color from cover art (Palette)
+- **Lyrics**: LRCLIB real synced lyrics
+- Guest welcome (YouTube login later for account name)
 
 ## Build
 
-GitHub Actions → debug APK on every push.  
-https://github.com/anjalifredy-ai/PulseMusic
+GitHub Actions → debug APK artifact.
 
----
-PulseMusic — own engine, own UI, own release path.
+https://github.com/anjalifredy-ai/PulseMusic

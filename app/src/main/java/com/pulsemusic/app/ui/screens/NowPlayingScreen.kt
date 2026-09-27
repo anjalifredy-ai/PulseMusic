@@ -1,6 +1,8 @@
 package com.pulsemusic.app.ui.screens
 
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -37,17 +39,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.palette.graphics.Palette
+import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.pulsemusic.app.data.LyricLine
 import com.pulsemusic.app.data.MusicRepository
 import com.pulsemusic.app.data.Song
-import com.pulsemusic.app.ui.components.CoverImage
 import com.pulsemusic.app.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 fun NowPlayingScreen(
@@ -56,18 +66,49 @@ fun NowPlayingScreen(
     onPlayPause: () -> Unit,
     onBack: () -> Unit
 ) {
-    var progress by remember { mutableFloatStateOf(0.08f) }
+    var progress by remember { mutableFloatStateOf(0.05f) }
     var showLyrics by remember { mutableStateOf(false) }
     var lyrics by remember { mutableStateOf<List<LyricLine>>(emptyList()) }
     var lyricsLoading by remember { mutableStateOf(false) }
     var activeLyricIndex by remember { mutableIntStateOf(0) }
+    var themeColor by remember { mutableStateOf(Color(0xFF3A0A22)) }
     val repo = remember { MusicRepository() }
+    val context = LocalContext.current
+
+    // Dynamic theme from cover banner
+    LaunchedEffect(song.coverUrl) {
+        try {
+            val req = ImageRequest.Builder(context)
+                .data(song.coverUrl)
+                .allowHardware(false)
+                .build()
+            val result = context.imageLoader.execute(req)
+            if (result is SuccessResult) {
+                val bmp = (result.drawable as? BitmapDrawable)?.bitmap
+                if (bmp != null) {
+                    val palette = withContext(Dispatchers.Default) {
+                        Palette.from(bmp).generate()
+                    }
+                    val swatch = palette.vibrantSwatch
+                        ?: palette.darkVibrantSwatch
+                        ?: palette.mutedSwatch
+                        ?: palette.dominantSwatch
+                    if (swatch != null) {
+                        themeColor = Color(swatch.rgb)
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
+    val bgTop by animateColorAsState(themeColor.copy(alpha = 0.85f), label = "bgTop")
+    val accent by animateColorAsState(themeColor, label = "accent")
 
     LaunchedEffect(song.id) {
         lyricsLoading = true
         lyrics = repo.getLyrics(song)
         lyricsLoading = false
-        progress = 0.08f
+        progress = 0.05f
         activeLyricIndex = 0
     }
 
@@ -76,7 +117,7 @@ fun NowPlayingScreen(
         val maxTime = lyrics.lastOrNull()?.timeMs?.coerceAtLeast(30_000L) ?: 30_000L
         while (true) {
             delay(400)
-            progress = (progress + 0.006f).coerceAtMost(1f)
+            progress = (progress + 0.005f).coerceAtMost(1f)
             val approxMs = (progress * maxTime).toLong()
             activeLyricIndex = lyrics.indexOfLast { it.timeMs <= approxMs }.coerceAtLeast(0)
         }
@@ -87,7 +128,7 @@ fun NowPlayingScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF3A0A22), Color(0xFF1A0A12), PulseBlack)
+                    listOf(bgTop, Color(0xFF12080E), PulseBlack)
                 )
             )
             .padding(horizontal = 20.dp),
@@ -125,7 +166,7 @@ fun NowPlayingScreen(
                 Icon(
                     imageVector = if (showLyrics) Icons.Default.Album else Icons.Default.MusicNote,
                     contentDescription = "Lyrics",
-                    tint = if (showLyrics) PulsePink else TextPrimary
+                    tint = if (showLyrics) accent else TextPrimary
                 )
             }
         }
@@ -143,7 +184,7 @@ fun NowPlayingScreen(
                     when {
                         lyricsLoading -> {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = PulsePink)
+                                CircularProgressIndicator(color = accent)
                             }
                         }
                         lyrics.isEmpty() -> {
@@ -155,6 +196,7 @@ fun NowPlayingScreen(
                             LyricsPanel(
                                 lyrics = lyrics,
                                 activeIndex = activeLyricIndex,
+                                accent = accent,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -165,16 +207,21 @@ fun NowPlayingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        CoverImage(
-                            url = song.coverUrl,
+                        // Banner / cover
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(song.coverUrl)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = song.title,
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .fillMaxWidth(0.85f)
+                                .fillMaxWidth(0.88f)
                                 .aspectRatio(1f)
-                                .clip(RoundedCornerShape(22.dp))
-                                .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(22.dp))
+                                .clip(RoundedCornerShape(24.dp))
+                                .border(1.5.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(24.dp))
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
                         Text(
                             text = song.title,
                             color = TextPrimary,
@@ -204,8 +251,8 @@ fun NowPlayingScreen(
             value = progress,
             onValueChange = { progress = it },
             colors = SliderDefaults.colors(
-                thumbColor = PulsePink,
-                activeTrackColor = PulsePink,
+                thumbColor = accent,
+                activeTrackColor = accent,
                 inactiveTrackColor = Color(0xFF333333)
             ),
             modifier = Modifier.fillMaxWidth()
@@ -214,7 +261,7 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(formatTime((progress * 180).toInt()), color = TextMuted, fontSize = 12.sp)
+            Text(formatTime((progress * 210).toInt()), color = TextMuted, fontSize = 12.sp)
             Text(song.duration, color = TextMuted, fontSize = 12.sp)
         }
 
@@ -235,9 +282,9 @@ fun NowPlayingScreen(
             }
             Box(
                 modifier = Modifier
-                    .size(70.dp)
+                    .size(72.dp)
                     .clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(PulsePink, PulseMagenta)))
+                    .background(Brush.radialGradient(listOf(accent, accent.copy(alpha = 0.7f))))
                     .clickable(onClick = onPlayPause),
                 contentAlignment = Alignment.Center
             ) {
@@ -262,6 +309,7 @@ fun NowPlayingScreen(
 private fun LyricsPanel(
     lyrics: List<LyricLine>,
     activeIndex: Int,
+    accent: Color,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
